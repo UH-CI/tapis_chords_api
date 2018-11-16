@@ -2,8 +2,9 @@ var hosts = ['*','https://localhost']
 
 var port = 4000
 
-var tenantUrl = "agave.tenant.com";
+var tenantUrl = "agaveauth.its.hawaii.edu";
 
-var chordsUrl = "localhost";
-var chordsAPIToken = "";
-module.exports = { hosts: hosts, port: port, tenant_url: tenantUrl, chords_url: chordsUrl, chords_api_token: chordsAPIToken};
+var chordsUrl = "localhost";//"agavetest.its.hawaii.edu";
+var chordsAPIToken = "6yjyBtbKUwhzxGpxszDu";
+var chordsEmail = "admin@chordsrt.com";
+module.exports = { hosts: hosts, port: port, tenant_url: tenantUrl, chords_url: chordsUrl, chords_api_token: chordsAPIToken,chords_email: chordsEmail};
