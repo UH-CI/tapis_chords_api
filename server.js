@@ -99,14 +99,12 @@ function create_metadata(res, token, body) {
 }
 
 //Site POST stream - create a metadata record that defines the timeseries site
-// chords_url/sites  POST
-// authenticity_token: In12OvdsX0wVMoNWsrexjsgtMlcqzQfQz7YhwXlENyeQCHEQkEWjD9MRVyROrrIf8YUhyzufNXdVhtj9IKintg==
-// site[name]: site name
-// site[lat]: lat
-// site[lon]: lon
-// site[elevation]: elevation
-// site[site_type_id]: 42
-// commit: Add a New Site
+// name: site name
+// lat: latitude in wgs84
+// lon: longitude in wgs84
+// elevation: elevation
+// site_type_id: 42 is the default
+// example curl call:  curl -sk -H "Authorization: Bearer 8f70c3434ddd2cf7a791907132ace1" -X POST -F "fileToUpload=@test.json" 'http://localhost:4000/sites?name=awesome&lat=2.0&lon=4.0&elevation=0.9'
 app.post('/sites', cors(corsOptions),function (req, res) {
   console.log("Sites posted")
   //ignore SSL validation in case tenant uses self-signed cert
@@ -116,64 +114,68 @@ app.post('/sites', cors(corsOptions),function (req, res) {
 
   var chords_uri = "http://"+chords_url+"/sites.json";
   //create chords site parameters and form data
-  site_data ={email:"admin@chordsrt.com",api_key: chords_api_token,site: {name: "test-site2",lat: 1.0, lon: 1.0,eleveation: 0.0,site_type_id: 42,commit: "Add a New Site"}}
+  if (req.query.name && req.query.lat && req.query.lon){
+    site_data ={email:"admin@chordsrt.com",api_key: chords_api_token,site: {name: req.query.name,lat: req.query.lat, lon: req.query.lat,elevation: req.query.elevation,site_type_id: 42,commit: "Add a New Site"}}
+    var postData = qs.stringify(site_data)
+    var chord_options = {
+      uri: chords_uri,
+      method: 'POST',
+      body: postData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': postData.length
+      }
+    };
 
-  var chord_options = {
-    uri: chords_uri,
-    method: 'POST',
-    body: qs.stringify(site_data),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Content-Length': postData.length
-    }
-  };
+    var agave_header = {
+                  'accept': 'application/json',
+                  'content-type': 'application/json; charset=utf-8',
+                  'Authorization': 'Bearer ' + token
+              };
 
-  var agave_header = {
-                'accept': 'application/json',
-                'content-type': 'application/json; charset=utf-8',
-                'Authorization': 'Bearer ' + token
-            };
-
-  var agave_url = "https://"+tenant_url+"/meta/v2/data/"
-  // request object
-  request.post(chord_options,  function (err, resp, data) {
-    if (err) {
-      console.log('Error:', err);
-      res.send(err)
-    } else if (resp.statusCode !== 200) {
-      console.log('Status:', resp.statusCode);
-      console.log(data)
-      results = JSON.parse(data)
-      //create Agave metadata JSON string
-      meta = '{"name":"Site","value":{"name":"'+results['name']+'","type":"chords","latitude":'+results['lat']+',"longitude":'+results['lon']+', "chords_id":'+results['id']+'}}'
-      console.log(meta)
-      var options = {
-          url: agave_url,
-          headers: agave_header,
-          encoding: null, //encode with binary
-          body:meta
-        }
-      //sitemeta  = create_metadata(res,token, '{"name":"Site","value":{"name":"'+data['name']+'","type":"chords","latitude":'+data['lat']+',"longitude":'+data['lon']+', "chords_id":'+data['id']+'}}')
-      request.post(options, (err, response, result) => {
-          if (err) {
-            console.log('Error:', err);
-            //return err
-          } else if (response.statusCode !== 200) {
-            console.log('Status:', resp.statusCode);
-            console.log(result)
-            res.send(result)
-            //return data
-          } else {
-            console.log(result);
-            //return data
+    var agave_url = "https://"+tenant_url+"/meta/v2/data/"
+    // request object
+    request.post(chord_options,  function (err, resp, data) {
+      if (err) {
+        console.log('Error:', err);
+        res.send(err)
+      } else if (resp.statusCode !== 200) {
+        console.log('Status:', resp.statusCode);
+        console.log(data)
+        results = JSON.parse(data)
+        //create Agave metadata JSON string
+        meta = '{"name":"Site","value":{"name":"'+results['name']+'","type":"chords","latitude":'+results['lat']+',"longitude":'+results['lon']+', "chords_id":'+results['id']+'}}'
+        console.log(meta)
+        var options = {
+            url: agave_url,
+            headers: agave_header,
+            encoding: null, //encode with binary
+            body:meta
           }
-      });
-    } else {
-      console.log(data);
-      res.send(data )
-    }
-  });
-
+        //sitemeta  = create_metadata(res,token, '{"name":"Site","value":{"name":"'+data['name']+'","type":"chords","latitude":'+data['lat']+',"longitude":'+data['lon']+', "chords_id":'+data['id']+'}}')
+        request.post(options, (err, response, result) => {
+            if (err) {
+              console.log('Error:', err);
+              //return err
+            } else if (response.statusCode !== 200) {
+              console.log('Status:', resp.statusCode);
+              console.log(result)
+              res.send(result)
+              //return data
+            } else {
+              console.log(result);
+              //return data
+            }
+        });
+      } else {
+        console.log(data);
+        res.send(data )
+      }
+    });
+  }
+  else{
+    res.send("ERROR: name,lat and lon are required parameters.  Please check your API call and try again.")
+  }
 })
 
 
