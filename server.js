@@ -3,9 +3,11 @@ const express        = require('express');
 var cors             = require('cors')
 const bodyParser     = require('body-parser');
 const app            = express();
-const request = require('request');
-const qs = require('qs');
-var querystring = require('querystring');
+const request        = require('request');
+const qs             = require('qs');
+var querystring      = require('querystring');
+const rp             = require('request-promise');
+
 
 var configFile = require('./config.js');
 
@@ -32,6 +34,7 @@ app.listen(port, () => {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+
 // GET method route
 app.get('/', function (req, res) {
   res.send('GET request to the homepage')
@@ -44,12 +47,11 @@ app.get('/', function (req, res) {
 app.get('/sites', cors(corsOptions),function (req, res) {
 console.log("Sites requested")
 //res.send("HEY")
-  var url = "http://"+chords_url+"/sites.json";
-
+  var url = "http://"+chords_url+"/sites.json?email="+chords_email+"&api_key="+chords_api_token;
   var options = {
       url: url,
       headers: {'Content-Type': 'application/json'},
-      data:{api_key:chords_api_token}
+      json:true
     }
   request.get(options, (err, resp, data) => {
       if (err) {
@@ -115,7 +117,7 @@ app.post('/sites', cors(corsOptions),function (req, res) {
   var chords_uri = "http://"+chords_url+"/sites.json";
   //create chords site parameters and form data
   if (req.query.name && req.query.lat && req.query.lon){
-    site_data ={email:"admin@chordsrt.com",api_key: chords_api_token,site: {name: req.query.name,lat: req.query.lat, lon: req.query.lat,elevation: req.query.elevation,site_type_id: 42,commit: "Add a New Site"}}
+    site_data ={email:chords_email,api_key: chords_api_token,site: {name: req.query.name,lat: req.query.lat, lon: req.query.lat,elevation: req.query.elevation,site_type_id: 42,commit: "Add a New Site"}}
     var postData = qs.stringify(site_data)
     var chord_options = {
       uri: chords_uri,
@@ -164,7 +166,7 @@ app.post('/sites', cors(corsOptions),function (req, res) {
               //return data
             } else {
               console.log(result);
-              //return data
+              res.send(result);
             }
         });
       } else {
@@ -178,7 +180,9 @@ app.post('/sites', cors(corsOptions),function (req, res) {
   }
 })
 
-
+//INSTRUMENT GET
+//Fetch instruments from Agave Metadata based on site uuid
+// site_uuid: Agave metadata uuid for site
 app.get('/instruments', cors(corsOptions),function (req, res) {
 console.log("Instruments requested")
 //res.send("HEY")
@@ -202,44 +206,56 @@ console.log("Instruments requested")
   });
 })
 
-
 //INSTRUMENT POST chords_url/instruments
 // authenticity_token: 9mXwN7pwoPvE6aGQ5XC7aBHxSNiYd49cnMG5x2qZVhdEEPcd3VlcuALKdeIZabj5KFlbRIklvfsG8UD7M3XGhg==
-// instrument[name]: my_sensor1
-// instrument[sensor_id]: my_sensor1
-// instrument[topic_category_id]: 19
-// instrument[description]: some
-// instrument[site_id]: 4
-// instrument[display_points]: 120
-// instrument[plot_offset_value]: 1
-// instrument[plot_offset_units]: weeks
-// instrument[sample_rate_seconds]: 60
+// name]: my_sensor1
+// sensor_id]: my_sensor1
+// topic_category_id]: 19
+// description]: some
+// site_uuid: Agave UUID of site
+// display_points]: 120
+// plot_offset_value]: 1
+// plot_offset_units]: weeks
+// sample_rate_seconds]: 60
 // commit: Create Instrument
 app.post('/instruments', cors(corsOptions),function (req, res) {
-console.log("Instruments requested")
-//res.send("HEY")
-  var url = "http://"+chords_url+"/instruments";
-  var options = {
-      url: url,
-      headers: {'Content-Type': 'application/json'},
-      data:{api_key:chords_api_token}
-    }
-  request.get(options, (err, resp, data) => {
-      if (err) {
-        console.log('Error:', err);
-      } else if (resp.statusCode !== 200) {
-        console.log('Status:', resp.statusCode);
-        console.log(data)
-        res.send(data)
-      } else {
-        console.log(data);
-        res.send(data )
+  console.log("Instruments requested")
+  //res.send("HEY")
+  //ignore SSL validation in case tenant uses self-signed cert
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+  var header=req.headers['authorization']||'',        // get the header
+  token=header.split(/\s+/).pop(); //get the Agave API Token
+
+  var chords_uri = "http://"+chords_url+"/instruments.json";
+  //create chords site parameters and form data
+  if (req.query.site_uuid){
+    //fetch agave site metadata object
+    var agave_header = {
+                  'accept': 'application/json',
+                  'content-type': 'application/json; charset=utf-8',
+                  'Authorization': 'Bearer ' + token
+              };
+
+    var agave_url = "https://"+tenant_url+"/meta/v2/data/"+req.query.site_uuid+"/pems/"
+    var get_metadata_options = {
+        url: agave_url,
+        headers: agave_header,
+        json: true
       }
-  });
+
+    rp.get(get_metadata_options)
+      .then(function (response) {
+          console.log(response)
+          res.send(response)
+      })
+      .catch(function (err) {
+          console.log(err)
+      });
+  }
 })
 
-
-
+//MEASUREMENT GET
+//Fetch measurements from chords based on instrument
 app.get('/measurements', cors(corsOptions),function (req, res) {
 console.log("Instruments requested")
 //res.send("HEY")
