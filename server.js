@@ -207,16 +207,15 @@ console.log("Instruments requested")
 })
 
 //INSTRUMENT POST chords_url/instruments
-// authenticity_token: 9mXwN7pwoPvE6aGQ5XC7aBHxSNiYd49cnMG5x2qZVhdEEPcd3VlcuALKdeIZabj5KFlbRIklvfsG8UD7M3XGhg==
-// name]: my_sensor1
-// sensor_id]: my_sensor1
-// topic_category_id]: 19
-// description]: some
 // site_uuid: Agave UUID of site
-// display_points]: 120
-// plot_offset_value]: 1
-// plot_offset_units]: weeks
-// sample_rate_seconds]: 60
+// name: my_sensor1
+// sensor_id: my_sensor1
+// topic_category_id: 19
+// description: some
+// display_points: 120
+// plot_offset_value: 1
+// plot_offset_units: weeks
+// sample_rate_seconds: 60
 // commit: Create Instrument
 app.post('/instruments', cors(corsOptions),function (req, res) {
   console.log("Instruments posted")
@@ -276,18 +275,20 @@ app.post('/instruments', cors(corsOptions),function (req, res) {
                     rp.post(post_instrument_options)
                       .then(function (response3) {
                         console.log(response3)
-                        meta = '{"name":"Instrument","associationIds":["'+req.query.site_uuid+'"],"value":{"name":"'+response3['name']+'","type":"chords","chords_id":'+response3['id']+',"chords_site_id":'+response3['site_id']+'}}'
+                        //meta = '{"name":"Instrument","associationIds":["'+req.query.site_uuid+'"],"value":{"name":"'+response3['name']+'","type":"chords","chords_id":'+response3['id']+',"chords_site_id":'+response3['site_id']+'}}'
+                        meta = {name:"Instrument",associationIds:[req.query.site_uuid],value:{name:response3['name'],type:"chords",chords_id:response3['id'],chords_site_id:response3['site_id']}}
                         var post_instrument_metadata_options = {
                             url: "https://"+tenant_url+"/meta/v2/data/",
                             headers: agave_header,
                             encoding: null, //encode with binary
-                            body:meta
+                            body:meta,
+                            json:true
                           }
                         //post Agave instrument metadata
                         rp.post(post_instrument_metadata_options)
                           .then(function (response4) {
                             console.log(response4)
-                            res.send(response4)
+                            res.send(response4['result'])
                           })//then for Agave instrument metadata creation
                           .catch(function (err4) {
                               console.log(err4)
@@ -337,12 +338,90 @@ console.log("Instruments requested")
   });
 })
 
-
+// MEASUREMTN POST
+// instrument_uuid: Agave uuid of instrument metadata object
+// at: timestamp for measurement
+//
 //url_create?instrument_id=1&shortname=TEMP&shortname=name&at=2015-08-20T19:50:28&key=KeyValue&test
 app.post('/measurements', cors(corsOptions),function (req, res) {
-console.log("Instruments requested")
-//res.send("HEY")
-  var url = "http://"+chords_url+"/measurements/url_create?instrument_id=1&TEMP=1.0&COLD=2.0&at=2015-08-20T21:50:28&key="+chords_api_token+"&test";
+  console.log("Measurement posted")
+  console.log(req.query)
+  //ignore SSL validation in case tenant uses self-signed cert
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+  var header=req.headers['authorization']||'', // get the header
+  token=header.split(/\s+/).pop(); //get the Agave API Token
+  if (req.query.instrument_uuid){
+    var agave_header = {
+                  'accept': 'application/json',
+                  'content-type': 'application/json; charset=utf-8',
+                  'Authorization': 'Bearer ' + token
+              };
+    var get_profile_options = {
+      url: "https://"+tenant_url+"/profiles/me",
+      headers: agave_header,
+      json: true
+    }
+    //fetch agave profile
+    rp.get(get_profile_options)
+      .then(function (response) {
+        console.log(response)
+        var get_metadata_pem_options = {
+            url: "https://"+tenant_url+"/meta/v2/data/"+req.query.instrument_uuid+"/pems/"+response['result']['username'],
+            headers: agave_header,
+            json: true
+          }
+          //fetch agave instrument metadata permission for profile username
+        rp.get(get_metadata_pem_options)
+          .then(function (response1) {
+            console.log(response1)
+            if(response1['result']['permission']['write'] == true){
+              //We can write to lets fetch the instrument_id
+              var get_metadata_options = {
+                  url: "https://"+tenant_url+"/meta/v2/data/"+req.query.instrument_uuid+"?filter=value.chords_id",
+                  headers: agave_header,
+                  json: true
+                }
+              //fetch agave instrument metadata obj with only chords_id field
+              rp.get(get_metadata_options)
+                .then( function (response2) {
+                  console.log(response2)
+                  measurement_data =Object.assign({}, {email:chords_email,api_key: chords_api_token,instrument_id: response2['result']['value']['chords_id']},req.query.vars)
+                  console.log(measurement_data)
+                  var postData = qs.stringify(measurement_data)
+                  var post_instrument_options ={
+                    uri: "http://"+chords_url+"/measurements/url_create?",
+                    method: 'GET',
+                    body: postData,
+                    headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                      'Content-Length': postData.length
+                    },
+                    json:true
+                  }
+                  //post chords measurement
+                  rp.get(post_instrument_options)
+                    .then(function(response3){
+                      console.log(response3)
+                      res.send(response3)
+                    })
+                    .catch(function (err2) {
+                        console.log(err2)
+                    });//catch for chords measurment post
+                })//then for instrument metadata fetch
+                .catch(function (err2) {
+                    console.log(err2)
+                });//catch for instrument metadata fetch
+            }
+        })//then for instument metadata permissions check
+        .catch(function (err1) {
+            console.log(err1)
+        });//catch for instrument metatdata permsisions fetch
+      })
+      .catch(function (err) {
+          console.log(err)
+      });//catch for profile fetch
+
+  /*var url = "http://"+chords_url+"/measurements/url_create?instrument_id=1&TEMP=1.0&COLD=2.0&at=2015-08-20T21:50:28&key="+chords_api_token+"&test";
   var options = {
       url: url,
       headers: {'Content-Type': 'application/json'},
@@ -358,5 +437,9 @@ console.log("Instruments requested")
         console.log(data);
         res.send(data )
       }
-  });
+  });*/
+  }//if check
+  else{
+    res.send("Instrument UUID parameter is required")
+  }
 })
