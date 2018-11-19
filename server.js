@@ -219,39 +219,97 @@ console.log("Instruments requested")
 // sample_rate_seconds]: 60
 // commit: Create Instrument
 app.post('/instruments', cors(corsOptions),function (req, res) {
-  console.log("Instruments requested")
-  //res.send("HEY")
+  console.log("Instruments posted")
   //ignore SSL validation in case tenant uses self-signed cert
   process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
-  var header=req.headers['authorization']||'',        // get the header
+  var header=req.headers['authorization']||'', // get the header
   token=header.split(/\s+/).pop(); //get the Agave API Token
-
-  var chords_uri = "http://"+chords_url+"/instruments.json";
-  //create chords site parameters and form data
   if (req.query.site_uuid){
-    //fetch agave site metadata object
+
     var agave_header = {
                   'accept': 'application/json',
                   'content-type': 'application/json; charset=utf-8',
                   'Authorization': 'Bearer ' + token
               };
 
-    var agave_url = "https://"+tenant_url+"/meta/v2/data/"+req.query.site_uuid+"/pems/"
-    var get_metadata_options = {
-        url: agave_url,
-        headers: agave_header,
-        json: true
-      }
-
-    rp.get(get_metadata_options)
+    var get_profile_options = {
+      url: "https://"+tenant_url+"/profiles/me",
+      headers: agave_header,
+      json: true
+    }
+    //fetch agave profile
+    rp.get(get_profile_options)
       .then(function (response) {
-          console.log(response)
-          res.send(response)
-      })
+        console.log(response)
+        var get_metadata_pem_options = {
+            url: "https://"+tenant_url+"/meta/v2/data/"+req.query.site_uuid+"/pems/"+response['result']['username'],
+            headers: agave_header,
+            json: true
+          }
+        //fetch agave site metadata permission for profile username
+        rp.get(get_metadata_pem_options)
+          .then(function (response1) {
+              console.log(response1)
+              if(response1['result']['permission']['write'] == true){
+                //We can write to lets fetch the site_id
+                var get_metadata_options = {
+                    url: "https://"+tenant_url+"/meta/v2/data/"+req.query.site_uuid+"?filter=value.chords_id",
+                    headers: agave_header,
+                    json: true
+                  }
+                //fetch agave site metadata obj with only chords_id field
+                rp.get(get_metadata_options)
+                  .then( function (response2) {
+                    instrument_data ={email:chords_email,api_key: chords_api_token,instrument: {site_id: response2['result']['value']['chords_id'],name: req.query.name,sensor_id: req.query.name, topic_category_id: 19, description: req.query.description, display_points: 120,plot_offset_value: 1, plot_offset_units: "weeks", sample_rate_seconds: 60,commit: "Create Instrument"}}
+                    var postData = qs.stringify(instrument_data)
+                    var post_instrument_options ={
+                      uri: "http://"+chords_url+"/instruments.json",
+                      method: 'POST',
+                      body: postData,
+                      headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Length': postData.length
+                      },
+                      json:true
+                    }
+                    //post chords instument
+                    rp.post(post_instrument_options)
+                      .then(function (response3) {
+                        console.log(response3)
+                        meta = '{"name":"Instrument","associationIds":["'+req.query.site_uuid+'"],"value":{"name":"'+response3['name']+'","type":"chords","chords_id":'+response3['id']+',"chords_site_id":'+response3['site_id']+'}}'
+                        var post_instrument_metadata_options = {
+                            url: "https://"+tenant_url+"/meta/v2/data/",
+                            headers: agave_header,
+                            encoding: null, //encode with binary
+                            body:meta
+                          }
+                        //post Agave instrument metadata
+                        rp.post(post_instrument_metadata_options)
+                          .then(function (response4) {
+                            console.log(response4)
+                            res.send(response4)
+                          })//then for Agave instrument metadata creation
+                          .catch(function (err4) {
+                              console.log(err4)
+                          });//catch for Agave instrument metadata creation
+                      })//then for chords instrument post
+                      .catch(function (err3) {
+                          console.log(err3)
+                      });//catch for chords instrument post
+                  })//then for site metadate fetch
+                  .catch(function (err2) {
+                      console.log(err2)
+                  });//catch for site metadata fetch
+              }//close if for metadata permission check
+          })//then for site metadata permissions fetch
+          .catch(function (err1) {
+              console.log(err1)
+          });//catch for site metadata permissions fetch
+      })//then for profiles fetch
       .catch(function (err) {
           console.log(err)
-      });
-  }
+      });//catch for profile fetch
+  }//close if
 })
 
 //MEASUREMENT GET
