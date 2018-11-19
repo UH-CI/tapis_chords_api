@@ -45,8 +45,34 @@ app.get('/', function (req, res) {
 // SITE GET
 //
 app.get('/sites', cors(corsOptions),function (req, res) {
-console.log("Sites requested")
-//res.send("HEY")
+  console.log("Sites requested")
+
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+  var header=req.headers['authorization']||'', // get the header
+  token=header.split(/\s+/).pop(); //get the Agave API Token
+  var query ={'name':'Site', 'value.type':"chords"}
+  console.log(query)
+  var agave_header = {
+                'accept': 'application/json',
+                'content-type': 'application/json; charset=utf-8',
+                'Authorization': 'Bearer ' + token
+            };
+  var get_sites_options = {
+      url: "https://"+tenant_url+"/meta/v2/data?q="+JSON.stringify(query),
+      headers: agave_header,
+      json: true
+    }
+  //fetch agave instrument metadata obj with only chords_id field
+  rp.get(get_sites_options)
+    .then( function (response) {
+      console.log(response)
+      res.send(response)
+    })
+    .catch(function (err) {
+        console.log(err)
+    })//catch for instrument metadata fetch
+
+/*
   var url = "http://"+chords_url+"/sites.json?email="+chords_email+"&api_key="+chords_api_token;
   var options = {
       url: url,
@@ -65,6 +91,7 @@ console.log("Sites requested")
         res.send(data )
       }
   });
+  */
 })
 
 function create_metadata(res, token, body) {
@@ -180,12 +207,40 @@ app.post('/sites', cors(corsOptions),function (req, res) {
   }
 })
 
-//INSTRUMENT GET
+//INSTRUMENTS GET
 //Fetch instruments from Agave Metadata based on site uuid
 // site_uuid: Agave metadata uuid for site
 app.get('/instruments', cors(corsOptions),function (req, res) {
-console.log("Instruments requested")
-//res.send("HEY")
+  console.log("Instruments requested")
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+  var header=req.headers['authorization']||'', // get the header
+  token=header.split(/\s+/).pop(); //get the Agave API Token
+  var query ={'name':'Instrument'}
+  if(req.query.site_uuid != undefined){
+    query['associationIds'] = req.query.site_uuid
+  }
+  console.log(query)
+  var agave_header = {
+                'accept': 'application/json',
+                'content-type': 'application/json; charset=utf-8',
+                'Authorization': 'Bearer ' + token
+            };
+  var get_instruments_options = {
+      url: "https://"+tenant_url+"/meta/v2/data?q="+JSON.stringify(query),
+      headers: agave_header,
+      json: true
+    }
+  //fetch agave instrument metadata obj with only chords_id field
+  rp.get(get_instruments_options)
+    .then( function (response) {
+      console.log(response)
+      res.send(response)
+    })
+    .catch(function (err) {
+        console.log(err)
+    })//catch for instrument metadata fetch
+
+/*
   var url = "http://"+chords_url+"/instruments.json?email="+chords_email+"&api_key="+chords_api_token;
   var options = {
       url: url,
@@ -203,7 +258,7 @@ console.log("Instruments requested")
         console.log(data);
         res.send(data )
       }
-  });
+  });*/
 })
 
 //INSTRUMENT POST chords_url/instruments
@@ -217,6 +272,7 @@ console.log("Instruments requested")
 // plot_offset_units: weeks
 // sample_rate_seconds: 60
 // commit: Create Instrument
+//example curl curl -sk -H "Authorization: Bearer 349d994e5fc0cc6ded24ea50447b859f" -X POST 'http://localhost:4000/instruments?site_uuid=569912752204485096-242ac1112-0001-012&name=awesome'
 app.post('/instruments', cors(corsOptions),function (req, res) {
   console.log("Instruments posted")
   //ignore SSL validation in case tenant uses self-signed cert
@@ -314,11 +370,26 @@ app.post('/instruments', cors(corsOptions),function (req, res) {
 })
 
 //MEASUREMENT GET
-//Fetch measurements from chords based on instrument
+//Fetch measurements by instrument
 app.get('/measurements', cors(corsOptions),function (req, res) {
-console.log("Instruments requested")
+  console.log("Instruments requested")
+  //ignore SSL validation in case tenant uses self-signed cert
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+  var header=req.headers['authorization']||'', // get the header
+  token=header.split(/\s+/).pop(); //get the Agave API Token
+  var query = "{'$and':[{'name':'Instrument'},{'associationIds':["+req.query.site_uuid+"}"
+  var get_instruments_options = {
+      url: "https://"+tenant_url+"/meta/v2/data?q="+qs.stringify(query),
+      headers: agave_header,
+      json: true
+    }
+  //fetch agave instrument metadata obj with only chords_id field
+  rp.get(get_metadata_options)
+    .then( function (response2) {
+      console.log(response2)
+    })
 //res.send("HEY")
-  var url = "http://"+chords_url+"/instruments/1.geojson?key="+chords_api_token;
+/*  var url = "http://"+chords_url+"/instruments/1.geojson?key="+chords_api_token;
   var options = {
       url: url,
       headers: {'Content-Type': 'application/json'},
@@ -335,13 +406,13 @@ console.log("Instruments requested")
         console.log(data);
         res.send(data )
       }
-  });
+  });*/
 })
 
-// MEASUREMTN POST
+// MEASUREMENT POST
 // instrument_uuid: Agave uuid of instrument metadata object
-// at: timestamp for measurement
-//
+// at: timestamp for measurement (if not provided the system will use system time submitted)
+// vars[]: a hash/dictionary of variables using shortnames- NOTE these have to be defined for the instrument or they are ignored
 //url_create?instrument_id=1&shortname=TEMP&shortname=name&at=2015-08-20T19:50:28&key=KeyValue&test
 app.post('/measurements', cors(corsOptions),function (req, res) {
   console.log("Measurement posted")
@@ -385,7 +456,7 @@ app.post('/measurements', cors(corsOptions),function (req, res) {
               rp.get(get_metadata_options)
                 .then( function (response2) {
                   console.log(response2)
-                  measurement_data =Object.assign({}, {email:chords_email,api_key: chords_api_token,instrument_id: response2['result']['value']['chords_id']},req.query.vars)
+                  measurement_data =Object.assign({}, {email:chords_email,api_key: chords_api_token,instrument_id: response2['result']['value']['chords_id'], at: req.query.at || new Date().toISOString()},req.query.vars)
                   console.log(measurement_data)
                   var postData = qs.stringify(measurement_data)
                   var post_instrument_options ={
