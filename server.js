@@ -186,11 +186,11 @@ app.post('/sites', cors(corsOptions),function (req, res) {
 app.get('/instruments', cors(corsOptions),function (req, res) {
 console.log("Instruments requested")
 //res.send("HEY")
-  var url = "http://"+chords_url+"/instruments.json";
+  var url = "http://"+chords_url+"/instruments.json?email="+chords_email+"&api_key="+chords_api_token;
   var options = {
       url: url,
       headers: {'Content-Type': 'application/json'},
-      data:{api_key:chords_api_token}
+      json: true
     }
   request.get(options, (err, resp, data) => {
       if (err) {
