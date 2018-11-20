@@ -78,9 +78,11 @@ app.get('/sites', cors(corsOptions),function (req, res) {
 // name: site name
 // lat: latitude in wgs84
 // lon: longitude in wgs84
+// geojson: geojson object for spatial searching. example: {"type": "Point","coordinates": [2.0,4.0]}
+//   example geojson encoded: %7B%22type%22%3A%20%22Point%22%2C%22coordinates%22%3A%20%5B2.0%2C4.0%5D%7D
 // elevation: elevation
 // site_type_id: 42 is the default
-// example curl call:  curl -sk -H "Authorization: Bearer 8f70c3434ddd2cf7a791907132ace1" -X POST -F "fileToUpload=@test.json" 'http://localhost:4000/sites?name=awesome&lat=2.0&lon=4.0&elevation=0.9'
+// example curl call:  curl -sk -H "Authorization: Bearer 0e7fb437593e01973ac443cd646a8ed" -X POST 'http://localhost:4000/sites?name=awesome&lat=2.0&lon=4.0&elevation=0.9&geojson=%7B%22type%22%3A%20%22Point%22%2C%22coordinates%22%3A%20%5B2.0%2C4.0%5D%7D'
 app.post('/sites', cors(corsOptions),function (req, res) {
   console.log("Sites posted")
   //ignore SSL validation in case tenant uses self-signed cert
@@ -120,7 +122,7 @@ app.post('/sites', cors(corsOptions),function (req, res) {
         console.log(data)
         results = JSON.parse(data)
         //create Agave metadata JSON string
-        meta = '{"name":"Site","value":{"name":"'+results['name']+'","type":"chords","latitude":'+results['lat']+',"longitude":'+results['lon']+', "chords_id":'+results['id']+'}}'
+        meta = '{"name":"Site","value":{"name":"'+results['name']+'","type":"chords","latitude":'+results['lat']+',"longitude":'+results['lon']+', "chords_id":'+results['id']+',"loc": '+req.query.geojson+'}}'
         console.log(meta)
         var options = {
             url: agave_url,
@@ -128,7 +130,6 @@ app.post('/sites', cors(corsOptions),function (req, res) {
             encoding: null, //encode with binary
             body:meta
           }
-        //sitemeta  = create_metadata(res,token, '{"name":"Site","value":{"name":"'+data['name']+'","type":"chords","latitude":'+data['lat']+',"longitude":'+data['lon']+', "chords_id":'+data['id']+'}}')
         request.post(options, (err, response, result) => {
             if (err) {
               console.log('Error:', err);
@@ -189,7 +190,7 @@ app.get('/instruments', cors(corsOptions),function (req, res) {
     })//catch for instrument metadata fetch
 })
 
-//INSTRUMENT POST chords_url/instruments
+//INSTRUMENT POST
 // site_uuid: Agave UUID of site
 // name: my_sensor1
 // sensor_id: my_sensor1
@@ -359,7 +360,7 @@ app.get('/measurements', cors(corsOptions),function (req, res) {
 // instrument_uuid: Agave uuid of instrument metadata object
 // at: timestamp for measurement (if not provided the system will use system time submitted)
 // vars[]: a hash/dictionary of variables using shortnames- NOTE these have to be defined for the instrument or they are ignored
-//url_create?instrument_id=1&shortname=TEMP&shortname=name&at=2015-08-20T19:50:28&key=KeyValue&test
+//
 app.post('/measurements', cors(corsOptions),function (req, res) {
   console.log("Measurement posted")
   console.log(req.query)
@@ -449,8 +450,8 @@ app.post('/measurements', cors(corsOptions),function (req, res) {
 
 //GET SPATIAL
 //geometry: a geojson Geomtery Polygon or MultiPolygon
-//example:curl -sk -H "Authorization: Bearer 0e7fb437593e01973ac443cd646a8ed" -X GET 'http://localhost:4000/spatial?geometry=%7B%22geometry%22%3A%7B%22type%22%3A%22Polygon%22%2C%22coordinates%22%3A%5B%5B%5B-158.068537%2C21.465326%5D%2C%5B-158.068537%2C21.54625%5D%2C%5B-157.926289%2C21.54625%5D%2C%5B-157.926289%2C21.465326%5D%2C%5B-158.068537%2C21.465326%5D%5D%5D%7D%7D'
-//
+//sample geojson geometry to pass {"type":"Polygon","coordinates":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}
+//example (the sample geojson has been URI encoded): curl -sk -H "Authorization: Bearer 0e7fb437593e01973ac443cd646a8ed" -X GET 'http://localhost:4000/spatial?geometry=%7B%22type%22%3A%22Polygon%22%2C%22coordinates%22%3A%5B%5B%5B0%2C0%5D%2C%5B10%2C0%5D%2C%5B10%2C10%5D%2C%5B0%2C10%5D%2C%5B0%2C0%5D%5D%5D%7D'
 app.get('/spatial', cors(corsOptions),function (req, res) {
   console.log("Spatial query request")
 
@@ -458,9 +459,8 @@ app.get('/spatial', cors(corsOptions),function (req, res) {
   var header=req.headers['authorization']||'', // get the header
   token=header.split(/\s+/).pop(); //get the Agave API Token
   if (req.query.geometry){
-    var query_geometry = JSON.parse(req.query.geometry)
-    console.log(query_geometry.geometry)
-    query = "{'$and':[{'name':'Site'},{'value.type':'chords'},{'value.loc': {$geoWithin: {'$geometry':"+JSON.stringify(query_geometry.geometry)+"}}}]}";
+    console.log(req.query.geometry)
+    query = "{'$and':[{'name':'Site'},{'value.type':'chords'},{'value.loc': {$geoWithin: {'$geometry':"+req.query.geometry+"}}}]}";
     var agave_header = {
                   'accept': 'application/json',
                   'content-type': 'application/json; charset=utf-8',
