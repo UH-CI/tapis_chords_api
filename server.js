@@ -43,7 +43,8 @@ app.get('/', function (req, res) {
 
 
 // SITE GET
-//
+// fetch all Agave chords sites
+//example: curl -sk -H "Authorization: Bearer 0e7fb437593e01973ac443cd646a8ed" -X GET 'http://localhost:4000/sites'
 app.get('/sites', cors(corsOptions),function (req, res) {
   console.log("Sites requested")
 
@@ -348,6 +349,7 @@ app.post('/instruments', cors(corsOptions),function (req, res) {
 //Fetch measurements by instrument
 //instrument_uuid
 //format:  json or csv
+//example: curl -sk -H "Authorization: Bearer 0e7fb437593e01973ac443cd646a8ed" -X GET 'http://localhost:4000/measurements?instrument_uuid=2520111234992181736-242ac1111-0001-012&format=csv'
 app.get('/measurements', cors(corsOptions),function (req, res) {
   console.log("Instruments requested")
   //ignore SSL validation in case tenant uses self-signed cert
