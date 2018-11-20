@@ -72,27 +72,6 @@ app.get('/sites', cors(corsOptions),function (req, res) {
     .catch(function (err) {
         console.log(err)
     })//catch for instrument metadata fetch
-
-/*//GET CHORDS SITES
-  var url = "http://"+chords_url+"/sites.json?email="+chords_email+"&api_key="+chords_api_token;
-  var options = {
-      url: url,
-      headers: {'Content-Type': 'application/json'},
-      json:true
-    }
-  request.get(options, (err, resp, data) => {
-      if (err) {
-        console.log('Error:', err);
-      } else if (resp.statusCode !== 200) {
-        console.log('Status:', resp.statusCode);
-        console.log(data)
-        res.send(data)
-      } else {
-        console.log(data);
-        res.send(data )
-      }
-  });
-  */
 })
 
 //Site POST stream - create a metadata record that defines the timeseries site
@@ -208,26 +187,6 @@ app.get('/instruments', cors(corsOptions),function (req, res) {
     .catch(function (err) {
         console.log(err)
     })//catch for instrument metadata fetch
-
-/* //GETS CHORDS INSTRUMENTS
-  var url = "http://"+chords_url+"/instruments.json?email="+chords_email+"&api_key="+chords_api_token;
-  var options = {
-      url: url,
-      headers: {'Content-Type': 'application/json'},
-      json: true
-    }
-  request.get(options, (err, resp, data) => {
-      if (err) {
-        console.log('Error:', err);
-      } else if (resp.statusCode !== 200) {
-        console.log('Status:', resp.statusCode);
-        console.log(data)
-        res.send(data)
-      } else {
-        console.log(data);
-        res.send(data )
-      }
-  });*/
 })
 
 //INSTRUMENT POST chords_url/instruments
@@ -394,25 +353,6 @@ app.get('/measurements', cors(corsOptions),function (req, res) {
         console.log(err)
         res.send(err)
     });//catch for agave instrument metadata fetch
-//res.send("HEY")
-/*  var url = "http://"+chords_url+"/instruments/1.geojson?key="+chords_api_token;
-  var options = {
-      url: url,
-      headers: {'Content-Type': 'application/json'},
-      data:{api_key:chords_api_token}
-    }
-  request.get(options, (err, resp, data) => {
-      if (err) {
-        console.log('Error:', err);
-      } else if (resp.statusCode !== 200) {
-        console.log('Status:', resp.statusCode);
-        console.log(data)
-        res.send(data)
-      } else {
-        console.log(data);
-        res.send(data )
-      }
-  });*/
 })
 
 // MEASUREMENT POST
@@ -481,42 +421,68 @@ app.post('/measurements', cors(corsOptions),function (req, res) {
                       console.log(response3)
                       res.send(response3)
                     })
-                    .catch(function (err2) {
-                        console.log(err2)
+                    .catch(function (err3) {
+                        console.log(err3)
+                        res.send(err3)
                     });//catch for chords measurment post
                 })//then for instrument metadata fetch
                 .catch(function (err2) {
                     console.log(err2)
+                    res.send(err2)
                 });//catch for instrument metadata fetch
             }
         })//then for instument metadata permissions check
         .catch(function (err1) {
             console.log(err1)
+            res.send(err1)
         });//catch for instrument metatdata permsisions fetch
       })
       .catch(function (err) {
           console.log(err)
+          res.send(err)
       });//catch for profile fetch
-
-  /*var url = "http://"+chords_url+"/measurements/url_create?instrument_id=1&TEMP=1.0&COLD=2.0&at=2015-08-20T21:50:28&key="+chords_api_token+"&test";
-  var options = {
-      url: url,
-      headers: {'Content-Type': 'application/json'},
-    }
-  request.post(options, (err, resp, data) => {
-      if (err) {
-        console.log('Error:', err);
-      } else if (resp.statusCode !== 200) {
-        console.log('Status:', resp.statusCode);
-        console.log(data)
-        res.send(data)
-      } else {
-        console.log(data);
-        res.send(data )
-      }
-  });*/
   }//if check
   else{
-    res.send("Instrument UUID parameter is required")
+    res.send('{error: "Instrument UUID parameter is required"}')
+  }
+})
+
+//GET SPATIAL
+//geometry: a geojson Geomtery Polygon or MultiPolygon
+//example:curl -sk -H "Authorization: Bearer 0e7fb437593e01973ac443cd646a8ed" -X GET 'http://localhost:4000/spatial?geometry=%7B%22geometry%22%3A%7B%22type%22%3A%22Polygon%22%2C%22coordinates%22%3A%5B%5B%5B-158.068537%2C21.465326%5D%2C%5B-158.068537%2C21.54625%5D%2C%5B-157.926289%2C21.54625%5D%2C%5B-157.926289%2C21.465326%5D%2C%5B-158.068537%2C21.465326%5D%5D%5D%7D%7D'
+//
+app.get('/spatial', cors(corsOptions),function (req, res) {
+  console.log("Spatial query request")
+
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+  var header=req.headers['authorization']||'', // get the header
+  token=header.split(/\s+/).pop(); //get the Agave API Token
+  if (req.query.geometry){
+    var query_geometry = JSON.parse(req.query.geometry)
+    console.log(query_geometry.geometry)
+    query = "{'$and':[{'name':'Site'},{'value.type':'chords'},{'value.loc': {$geoWithin: {'$geometry':"+JSON.stringify(query_geometry.geometry)+"}}}]}";
+    var agave_header = {
+                  'accept': 'application/json',
+                  'content-type': 'application/json; charset=utf-8',
+                  'Authorization': 'Bearer ' + token
+              };
+    var get_spatial_options = {
+      url: "https://"+tenant_url+"/meta/v2/data?q="+encodeURI(query)+"&limit=100000&offset=0",
+      headers: agave_header,
+      json: true
+    }
+    rp.get(get_spatial_options)
+      .then(function (response) {
+        console.log(response)
+        res.send(response)
+      })
+      .catch(function (err) {
+          console.log(err)
+          res.send(err)
+      });//catch for spatial fetch
+
+  }
+  else{
+    res.send('{error: "GeoJSON geometry parameter is required"}')
   }
 })
