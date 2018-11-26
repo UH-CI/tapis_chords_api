@@ -2,6 +2,7 @@ Agave Chords API
 
 This NodeJS API connects Agave and the chords streaming service.
 
+To use the API with chords the supported chords docker app can be found here https://hub.docker.com/r/scleveland/chords/.  Just replace the base chords docker app with it and the Agave Chords API shouldn't have any CORS issues with chords.
 
 # INSTALLATION
 To run the nodejs server after pulling the repository:
