@@ -504,7 +504,7 @@ app.get('/measurements', cors(corsOptions),function (req, res) {
 // instrument_uuid: Agave uuid of instrument metadata object
 // at: timestamp for measurement (if not provided the system will use system time submitted)
 // vars[]: a hash/dictionary of variables using shortnames- NOTE these have to be defined for the chords instrument or they are ignored
-//
+//curl -sk -H "Authorization: Bearer AGAVE_TOKEN" -X POST 'http://localhost:4000/measurements?instrument_uuid=2520111234992181736-242ac1111-0001-012&vars%5Btemp%5D=25.0&vars%5Bdiss_ox%5D=1.5&vars%5Bhumidity%5D=0.5'
 app.post('/measurements', cors(corsOptions),function (req, res) {
   console.log("Measurement posted")
   console.log(req.query)
