@@ -21,6 +21,7 @@ The container can be accessed on localhost:8080 now.
 
 
 # USAGE
+The API will return results as JSON. Except for measurements which also supports CSV.
 
 The usage for the API is as follows for storing measurements:
 
