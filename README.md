@@ -18,7 +18,7 @@ Example curl commands are with the each api definition in the server.js. They ar
 
 ## Get Sites:
 
-curl -sk -H "Authorization: Bearer AGAVE_TOKEN" -X GET 'http://localhost:4000/sites'
+<pre>curl -sk -H "Authorization: Bearer AGAVE_TOKEN" -X GET 'http://localhost:4000/sites'</pre>
 
 
 ## Post Sites:
