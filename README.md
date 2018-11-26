@@ -2,11 +2,24 @@ Agave Chords API
 
 This NodeJS API connects Agave and the chords streaming service.
 
-To run this after pull the repository:
+
+# INSTALLATION
+To run the nodejs server after pulling the repository:
 
 1. npm install
 2. edit the config.js
 3. run the server with >node server.js
+
+OR you can build the docker container and run that:
+
+1. edit the config.js - make sure the port is 8080 as this is what is exposed in the dockerfile
+2. run >docker build -t agave_chords_api .
+3. run >docker run -d -p 8080:8080 agave_chords_api
+
+The container can be accessed on localhost:8080 now.
+
+
+# USAGE
 
 The usage for the API is as follows for storing measurements:
 
