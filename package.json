@@ -13,7 +13,8 @@
     "express": "^4.16.4",
     "qs": "^6.5.2",
     "request": "^2.88.0",
-    "request-promise": "^4.2.2"
+    "request-promise": "^4.2.2",
+    "event-stream": "3.3.4"
   },
   "devDependencies": {
     "nodemon": "^1.18.5"

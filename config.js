@@ -1,6 +1,6 @@
 var hosts = ['*','https://localhost']
 
-var port = 4000
+var port = 8080
 
 var tenantUrl = "agaveauth.its.hawaii.edu";
 
