@@ -164,7 +164,7 @@ app.get('/instruments', cors(corsOptions),function (req, res) {
   process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
   var header=req.headers['authorization']||'', // get the header
   token=header.split(/\s+/).pop(); //get the Agave API Token
-  var query ={'name':'Instrument','value.type':'chords_site_id'}
+  var query ={'name':'Instrument','value.type':'chords'}
   if(req.query.site_uuid != undefined){
     query['associationIds'] = req.query.site_uuid
   }
@@ -405,7 +405,7 @@ app.post('/variables', cors(corsOptions),function (req, res) {
                       .then(function(response3){
                         //create Agave variable
                         console.log(response3)
-                        meta = {name:"Variable",associationIds:[req.query.instrument_uuid],value:{name:response3['name'],type:"chords",units:req.query.units, units_abbrv: req.query.units_abbrv, chords_id:response3['id']}}
+                        meta = {name:"Variable",associationIds:[req.query.instrument_uuid],value:{name:response3['name'],shortname:response3['shortname'],type:"chords",units:req.query.units, units_abbrv: req.query.units_abbrv, chords_id:response3['id']}}
                         var post_instrument_metadata_options = {
                             url: "https://"+tenant_url+"/meta/v2/data/",
                             headers: agave_header,
