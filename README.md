@@ -1,8 +1,8 @@
-Agave Chords API
+Tapis Chords API
 
-This NodeJS API connects Agave and the chords streaming service.
+This NodeJS API connects Tapis and the [CHORDS service](http://portal.chordsrt.com/about) to add support for streaming sensor data in the Tapis Framework.
 
-To use the API with chords the supported chords docker app can be found here https://hub.docker.com/r/scleveland/chords/.  Just replace the base chords docker app with it and the Agave Chords API shouldn't have any CORS issues with chords.
+To use the API with chords the supported chords docker app can be found here https://hub.docker.com/r/scleveland/chords/.  Just replace the base chords docker app with it and the Tapis Chords API shouldn't have any CORS issues with chords.
 
 # INSTALLATION
 To run the nodejs server after pulling the repository:
